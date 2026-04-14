@@ -1,0 +1,387 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Client Intake — Master DB Ingestion</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@400;500&display=swap" rel="stylesheet" />
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      background: #080809;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      min-height: 100vh;
+      padding: 40px 20px;
+      font-family: 'IBM Plex Sans', sans-serif;
+    }
+
+    .wrap {
+      background: #0d0d0f;
+      border-radius: 12px;
+      overflow: hidden;
+      border: 1px solid #2a2a2e;
+      width: 100%;
+      max-width: 720px;
+    }
+
+    .titlebar {
+      background: #111114;
+      border-bottom: 1px solid #2a2a2e;
+      padding: 12px 20px;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .dots { display: flex; gap: 6px; }
+    .dot { width: 11px; height: 11px; border-radius: 50%; }
+    .dot-r { background: #3a1a1a; border: 1px solid #5a2a2a; }
+    .dot-y { background: #3a2e1a; border: 1px solid #5a481a; }
+    .dot-g { background: #1a3a1a; border: 1px solid #2a5a2a; }
+
+    .titlebar-text {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 12px;
+      color: #555;
+      letter-spacing: 0.04em;
+    }
+
+    .titlebar-badge {
+      margin-left: auto;
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 10px;
+      color: #3a8a5a;
+      background: #0d2a1e;
+      border: 1px solid #1a4a2e;
+      padding: 2px 8px;
+      border-radius: 4px;
+      letter-spacing: 0.06em;
+    }
+
+    .body { padding: 32px; }
+
+    .meta-row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      margin-bottom: 24px;
+    }
+
+    .meta-pill {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 10px;
+      color: #444;
+      background: #111114;
+      border: 1px solid #222226;
+      border-radius: 4px;
+      padding: 4px 10px;
+    }
+
+    .meta-pill span { color: #333; margin-right: 4px; }
+
+    .field { margin-bottom: 24px; }
+
+    .section-label {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 10px;
+      letter-spacing: 0.12em;
+      color: #444;
+      text-transform: uppercase;
+      margin-bottom: 8px;
+    }
+
+    .field-row {
+      display: flex;
+      gap: 8px;
+      align-items: flex-start;
+    }
+
+    .prefix {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 13px;
+      color: #3a7a5a;
+      background: #0a1e14;
+      border: 1px solid #1a3a28;
+      border-radius: 6px;
+      padding: 10px 12px;
+      white-space: nowrap;
+      flex-shrink: 0;
+    }
+
+    input[type="text"], textarea {
+      width: 100%;
+      background: #0a0a0d;
+      border: 1px solid #252528;
+      color: #d0d0d8;
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 13px;
+      border-radius: 6px;
+      padding: 10px 14px;
+      outline: none;
+      transition: border-color 0.15s, box-shadow 0.15s;
+      resize: none;
+    }
+
+    input[type="text"]:focus, textarea:focus {
+      border-color: #2a5a3e;
+      box-shadow: 0 0 0 3px rgba(42, 90, 62, 0.18);
+    }
+
+    input[type="text"]::placeholder, textarea::placeholder {
+      color: #2e2e34;
+    }
+
+    textarea { line-height: 1.65; height: 200px; }
+
+    .field-hint {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 10px;
+      color: #333;
+      margin-top: 6px;
+    }
+
+    .char-counter {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 10px;
+      color: #333;
+      text-align: right;
+      margin-top: 6px;
+      transition: color 0.2s;
+    }
+
+    hr.divider {
+      border: none;
+      border-top: 1px solid #1c1c20;
+      margin: 4px 0 24px;
+    }
+
+    .btn-row {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      flex-wrap: wrap;
+    }
+
+    .btn-submit {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 12px;
+      font-weight: 600;
+      letter-spacing: 0.06em;
+      background: #173a26;
+      color: #4adf8a;
+      border: 1px solid #2a5a3e;
+      padding: 11px 22px;
+      border-radius: 6px;
+      cursor: pointer;
+      transition: background 0.15s, box-shadow 0.15s, transform 0.1s;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .btn-submit:hover { background: #1f4f32; box-shadow: 0 0 0 3px rgba(74,223,138,0.1); }
+    .btn-submit:active { transform: scale(0.98); }
+    .btn-submit:disabled { opacity: 0.4; cursor: not-allowed; transform: none; box-shadow: none; }
+
+    .btn-clear {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 11px;
+      color: #333;
+      background: none;
+      border: 1px solid #1e1e22;
+      padding: 11px 16px;
+      border-radius: 6px;
+      cursor: pointer;
+      transition: color 0.15s, border-color 0.15s;
+    }
+
+    .btn-clear:hover { color: #666; border-color: #333; }
+
+    .status-bar {
+      margin-top: 20px;
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 11px;
+      border-radius: 6px;
+      padding: 11px 14px;
+      display: none;
+      align-items: flex-start;
+      gap: 10px;
+      line-height: 1.6;
+    }
+
+    .status-bar.show    { display: flex; }
+    .status-bar.loading { background: #111420; border: 1px solid #1e2840; color: #3a5a9a; }
+    .status-bar.success { background: #0d1e14; border: 1px solid #1a3a26; color: #3aaa6a; }
+    .status-bar.error   { background: #1a0d0d; border: 1px solid #3a1a1a; color: #aa4a4a; }
+
+    .status-icon { flex-shrink: 0; margin-top: 1px; }
+
+    .spinner {
+      width: 13px; height: 13px;
+      border: 2px solid #1e2840;
+      border-top-color: #3a6aca;
+      border-radius: 50%;
+      animation: spin 0.7s linear infinite;
+    }
+
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    @media (max-width: 500px) {
+      .body { padding: 20px; }
+      .field-row { flex-direction: column; }
+      .prefix { width: 100%; }
+    }
+  </style>
+</head>
+<body>
+
+<div class="wrap">
+  <div class="titlebar">
+    <div class="dots">
+      <div class="dot dot-r"></div>
+      <div class="dot dot-y"></div>
+      <div class="dot dot-g"></div>
+    </div>
+    <span class="titlebar-text">client-intake // master-db ingestion</span>
+    <span class="titlebar-badge">LIVE</span>
+  </div>
+
+  <div class="body">
+
+    <div class="meta-row">
+      <div class="meta-pill"><span>endpoint</span>POST /webhook/client</div>
+      <div class="meta-pill"><span>target</span>master-db</div>
+      <div class="meta-pill"><span>method</span>JSON</div>
+    </div>
+
+    <!-- Client ID Field -->
+    <div class="field">
+      <div class="section-label">client identifier</div>
+      <div class="field-row">
+        <div class="prefix">id://</div>
+        <div style="flex:1">
+          <input
+            type="text"
+            id="client-id-input"
+            placeholder="e.g. 001, 2025bbx, CLIENT-42, john-doe ..."
+            autocomplete="off"
+            spellcheck="false"
+          />
+          <div class="field-hint">any format accepted — numbers, codes, names, slugs</div>
+        </div>
+      </div>
+    </div>
+
+    <hr class="divider" />
+
+    <!-- Client Info Field -->
+    <div class="field">
+      <div class="section-label">client info payload</div>
+      <textarea
+        id="info-input"
+        placeholder="Paste or type any client information here — notes, structured data, JSON, freeform text, or a mix of anything..."
+      ></textarea>
+      <div class="char-counter" id="char-count">0 chars</div>
+    </div>
+
+    <!-- Actions -->
+    <div class="btn-row">
+      <button class="btn-submit" id="submit-btn" onclick="handleSubmit()">
+        <svg width="13" height="13" viewBox="0 0 16 16" fill="none">
+          <path d="M2 8h12M9 3l5 5-5 5" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
+        </svg>
+        SEND TO WEBHOOK
+      </button>
+      <button class="btn-clear" onclick="handleClear()">CLEAR</button>
+    </div>
+
+    <!-- Status -->
+    <div class="status-bar" id="status-bar">
+      <div class="status-icon" id="status-icon"></div>
+      <div id="status-msg"></div>
+    </div>
+
+  </div>
+</div>
+
+<script>
+  // ─── CONFIG ───────────────────────────────────────────────
+  const WEBHOOK_URL = 'https://n8n-smartmarketer.duckdns.org/webhook/de6645c3-1b72-4f01-bc8b-ca0a3b24d121';
+  // ──────────────────────────────────────────────────────────
+
+  const clientIdInput = document.getElementById('client-id-input');
+  const infoInput     = document.getElementById('info-input');
+  const charCount     = document.getElementById('char-count');
+  const statusBar     = document.getElementById('status-bar');
+  const submitBtn     = document.getElementById('submit-btn');
+
+  infoInput.addEventListener('input', () => {
+    const n = infoInput.value.length;
+    charCount.textContent = n.toLocaleString() + ' char' + (n !== 1 ? 's' : '');
+    charCount.style.color = n > 50000 ? '#7a3a3a' : '#333';
+  });
+
+  function setStatus(type, msg) {
+    statusBar.className = 'status-bar show ' + type;
+    const iconEl = document.getElementById('status-icon');
+    if (type === 'loading') {
+      iconEl.innerHTML = '<div class="spinner"></div>';
+    } else if (type === 'success') {
+      iconEl.innerHTML = '<svg width="14" height="14" viewBox="0 0 16 16" fill="none"><circle cx="8" cy="8" r="7" stroke="#3aaa6a" stroke-width="1.5"/><path d="M5 8l2.2 2.2L11 6" stroke="#3aaa6a" stroke-width="1.5" stroke-linecap="round"/></svg>';
+    } else {
+      iconEl.innerHTML = '<svg width="14" height="14" viewBox="0 0 16 16" fill="none"><circle cx="8" cy="8" r="7" stroke="#aa4a4a" stroke-width="1.5"/><path d="M5.5 5.5l5 5M10.5 5.5l-5 5" stroke="#aa4a4a" stroke-width="1.5" stroke-linecap="round"/></svg>';
+    }
+    document.getElementById('status-msg').textContent = msg;
+  }
+
+  async function handleSubmit() {
+    const clientId = clientIdInput.value.trim();
+    const info     = infoInput.value.trim();
+
+    if (!clientId) { setStatus('error', 'client ID is required'); return; }
+    if (!info)     { setStatus('error', 'client info payload cannot be empty'); return; }
+
+    submitBtn.disabled = true;
+    setStatus('loading', 'sending payload to webhook...');
+
+    const payload = {
+      client_id:    clientId,
+      client_info:  info,
+      submitted_at: new Date().toISOString(),
+    };
+
+    try {
+      const res = await fetch(WEBHOOK_URL, {
+        method:  'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body:    JSON.stringify(payload),
+      });
+
+      if (res.ok) {
+        setStatus('success', `payload dispatched — ${info.length.toLocaleString()} chars → master-db  ·  ${new Date().toLocaleTimeString()}`);
+      } else {
+        setStatus('error', `webhook returned ${res.status} ${res.statusText}`);
+      }
+    } catch (err) {
+      setStatus('error', 'network error: ' + err.message);
+    } finally {
+      submitBtn.disabled = false;
+    }
+  }
+
+  function handleClear() {
+    clientIdInput.value = '';
+    infoInput.value     = '';
+    charCount.textContent = '0 chars';
+    charCount.style.color = '';
+    statusBar.className = 'status-bar';
+  }
+</script>
+
+</body>
+</html>
